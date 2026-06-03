@@ -56,7 +56,8 @@ function ParticleDispersion() {
   const mesh = useRef<THREE.Points>(null!)
   const { pointer, viewport, size } = useThree()
 
-  const count = size.width < 768 ? 5000 : 12000
+  const isMobile = size.width < 768
+  const count = isMobile ? 7000 : 12000
   const { positions, basePositions, colors } = useMemo(() => generateParticles(count), [count])
   const velocities = useRef(new Float32Array(count * 3))
   const targetRotation = useRef({ x: 0, y: 0 })
@@ -79,8 +80,6 @@ function ParticleDispersion() {
     const dist = -state.camera.position.z / dir.z
     const mouseWorld = state.camera.position.clone().add(dir.multiplyScalar(dist))
     mouse3D.current.copy(mouseWorld)
-
-    const isMobile = size.width < 768
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3
@@ -126,8 +125,8 @@ function ParticleDispersion() {
       targetRotation.current.y = pointer.x * 0.18
       targetRotation.current.x = pointer.y * 0.12
     } else {
-      targetRotation.current.y = time * 0.04
-      targetRotation.current.x = Math.sin(time * 0.3) * 0.05
+      targetRotation.current.y = time * 0.08
+      targetRotation.current.x = Math.sin(time * 0.3) * 0.08
     }
     currentRotation.current.x += (targetRotation.current.x - currentRotation.current.x) * 0.05
     currentRotation.current.y += (targetRotation.current.y - currentRotation.current.y) * 0.05
@@ -137,13 +136,13 @@ function ParticleDispersion() {
   })
 
   return (
-    <points ref={mesh} frustumCulled={false}>
+    <points ref={mesh} frustumCulled={false} scale={isMobile ? [0.65, 0.65, 0.65] : [1, 1, 1]}>
       <bufferGeometry>
         <bufferAttribute args={[positions, 3]} attach="attributes-position" count={count} itemSize={3} />
         <bufferAttribute args={[colors, 3]} attach="attributes-color" count={count} itemSize={3} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.075}
+        size={isMobile ? 0.12 : 0.075}
         sizeAttenuation
         vertexColors
         transparent
