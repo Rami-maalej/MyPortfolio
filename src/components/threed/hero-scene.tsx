@@ -57,7 +57,7 @@ function ParticleDispersion() {
   const { pointer, viewport, size } = useThree()
 
   const isMobile = size.width < 768
-  const count = isMobile ? 7000 : 12000
+  const count = isMobile ? 5000 : 12000
   const { positions, basePositions, colors } = useMemo(() => generateParticles(count), [count])
   const velocities = useRef(new Float32Array(count * 3))
   const targetRotation = useRef({ x: 0, y: 0 })
@@ -74,12 +74,15 @@ function ParticleDispersion() {
 
     const time = state.clock.elapsedTime
 
-    const ndc = new THREE.Vector3(pointer.x, pointer.y, 0.5)
-    ndc.unproject(state.camera)
-    const dir = ndc.sub(state.camera.position).normalize()
-    const dist = -state.camera.position.z / dir.z
-    const mouseWorld = state.camera.position.clone().add(dir.multiplyScalar(dist))
-    mouse3D.current.copy(mouseWorld)
+    let mouseWorld: THREE.Vector3 | null = null
+    if (!isMobile) {
+      const ndc = new THREE.Vector3(pointer.x, pointer.y, 0.5)
+      ndc.unproject(state.camera)
+      const dir = ndc.sub(state.camera.position).normalize()
+      const dist = -state.camera.position.z / dir.z
+      mouseWorld = state.camera.position.clone().add(dir.multiplyScalar(dist))
+      mouse3D.current.copy(mouseWorld)
+    }
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3
@@ -93,7 +96,7 @@ function ParticleDispersion() {
       vel[i3 + 1] += (by - pos[i3 + 1]) * 0.06
       vel[i3 + 2] += (bz - pos[i3 + 2]) * 0.06
 
-      if (!isMobile) {
+      if (!isMobile && mouseWorld) {
         const dx = pos[i3] - mouseWorld.x
         const dy = pos[i3 + 1] - mouseWorld.y
         const dz = pos[i3 + 2] - mouseWorld.z
@@ -125,30 +128,30 @@ function ParticleDispersion() {
       targetRotation.current.y = pointer.x * 0.18
       targetRotation.current.x = pointer.y * 0.12
     } else {
-      targetRotation.current.y = time * 0.08
-      targetRotation.current.x = Math.sin(time * 0.3) * 0.08
+      targetRotation.current.y = time * 0.04
+      targetRotation.current.x = 0
     }
-    currentRotation.current.x += (targetRotation.current.x - currentRotation.current.x) * 0.05
-    currentRotation.current.y += (targetRotation.current.y - currentRotation.current.y) * 0.05
+    currentRotation.current.x += (targetRotation.current.x - currentRotation.current.x) * 0.03
+    currentRotation.current.y += (targetRotation.current.y - currentRotation.current.y) * 0.03
 
     mesh.current.rotation.x = currentRotation.current.x
     mesh.current.rotation.y = currentRotation.current.y
   })
 
   return (
-    <points ref={mesh} frustumCulled={false} scale={isMobile ? [0.65, 0.65, 0.65] : [1, 1, 1]}>
+    <points ref={mesh} frustumCulled={false}>
       <bufferGeometry>
         <bufferAttribute args={[positions, 3]} attach="attributes-position" count={count} itemSize={3} />
         <bufferAttribute args={[colors, 3]} attach="attributes-color" count={count} itemSize={3} />
       </bufferGeometry>
       <pointsMaterial
-        size={isMobile ? 0.12 : 0.075}
+        size={isMobile ? 0.1 : 0.075}
         sizeAttenuation
         vertexColors
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        opacity={0.85}
+        opacity={isMobile ? 0.7 : 0.85}
       />
     </points>
   )
