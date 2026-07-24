@@ -15,29 +15,61 @@ const categories = [
   { key: 'ai-cloud' as const, label: 'AI & Cloud', icon: Cloud },
 ]
 
-function SpecularCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function SkillCard({ name, level, index }: { name: string; level: number; index: number }) {
   const cardRef = useRef<HTMLDivElement>(null)
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * 100
-    const y = ((e.clientY - rect.top) / rect.height) * 100
-    cardRef.current.style.setProperty('--mouse-x', `${x}%`)
-    cardRef.current.style.setProperty('--mouse-y', `${y}%`)
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 20
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * -20
+    const px = ((e.clientX - rect.left) / rect.width) * 100
+    const py = ((e.clientY - rect.top) / rect.height) * 100
+    cardRef.current.style.transform = `perspective(600px) rotateX(${y}deg) rotateY(${x}deg) translateZ(6px)`
+    cardRef.current.style.setProperty('--mouse-x', `${px}%`)
+    cardRef.current.style.setProperty('--mouse-y', `${py}%`)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    if (!cardRef.current) return
+    cardRef.current.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg) translateZ(0px)'
   }, [])
 
   return (
-    <div
+    <motion.div
       ref={cardRef}
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06, ease: [0.16, 1, 0.3, 1], duration: 0.6 }}
       onMouseMove={handleMouseMove}
-      className={`glass-hover relative overflow-hidden rounded-2xl p-5 transition-all duration-300 ${className}`}
+      onMouseLeave={handleMouseLeave}
+      className="glass-hover relative overflow-hidden rounded-2xl p-6 transition-shadow duration-300"
       style={{
-        background: `radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.06) 0%, transparent 60%)`,
+        background: `radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(201,168,76,0.06) 0%, transparent 60%)`,
+        transformStyle: 'preserve-3d',
+        willChange: 'transform',
       }}
     >
-      {children}
-    </div>
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-white" style={{ fontFamily: 'var(--font-cormorant)', fontSize: '1.2rem', fontWeight: 500 }}>
+          {name}
+        </span>
+        <span className="label-cinzel" style={{ color: 'rgba(201,168,76,0.6)' }}>{level}%</span>
+      </div>
+      <div className="h-px overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+        <motion.div
+          initial={{ width: 0 }}
+          whileInView={{ width: `${level}%` }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.4, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+          className="h-full rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, rgba(201,168,76,0.6), rgba(232,213,163,0.9))',
+            boxShadow: '0 0 8px rgba(201,168,76,0.3)',
+          }}
+        />
+      </div>
+    </motion.div>
   )
 }
 
@@ -49,25 +81,28 @@ export default function Skills() {
     <section id="skills" className="relative px-6 py-32">
       <div className="mx-auto max-w-7xl">
         <Reveal>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-white/60 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+          <div className="label-cinzel mb-5 inline-flex items-center gap-3 text-white/30">
+            <span className="gold-dot" />
             Skills
           </div>
-          <h2 className="fluid-heading mb-4 font-display text-white">
+          <h2 className="fluid-heading mb-6 text-white">
             Technical<br />
-            <span className="text-white/30 italic">Arsenal</span>
+            <span className="italic" style={{ color: 'transparent', WebkitTextStroke: '1px rgba(255,255,255,0.2)' }}>
+              Arsenal
+            </span>
           </h2>
-          <p className="fluid-body max-w-2xl text-white/40">
+          <p className="fluid-body max-w-xl text-white/35">
             A comprehensive toolkit honed through real-world projects and continuous learning.
           </p>
         </Reveal>
 
+        {/* Category filters */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-          className="mb-10 mt-12 flex flex-wrap justify-center gap-2"
+          className="mb-12 mt-14 flex flex-wrap justify-center gap-3"
         >
           {categories.map((cat) => {
             const Icon = cat.icon
@@ -76,52 +111,44 @@ export default function Skills() {
               <button
                 key={cat.key}
                 onClick={() => setActiveCategory(cat.key)}
-                className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-500 ${
-                  isActive
-                    ? 'bg-white text-black shadow-lg'
-                    : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
-                }`}
+                className="inline-flex items-center gap-2 rounded-full px-6 py-3 transition-all duration-500"
+                style={{
+                  fontFamily: 'var(--font-cinzel)',
+                  fontSize: '0.6rem',
+                  letterSpacing: '0.2em',
+                  ...(isActive
+                    ? {
+                        background: 'linear-gradient(135deg, #c9a84c, #e8d5a3)',
+                        color: '#000',
+                        boxShadow: '0 4px 20px rgba(201,168,76,0.3)',
+                      }
+                    : {
+                        background: 'rgba(255,255,255,0.04)',
+                        color: 'rgba(255,255,255,0.45)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }),
+                }}
                 data-cursor="link"
               >
-                <Icon size={16} />
+                <Icon size={14} />
                 {cat.label}
               </button>
             )
           })}
         </motion.div>
 
+        {/* Skills grid */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeCategory}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           >
             {filtered.map((skill, i) => (
-              <motion.div
-                key={skill.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <SpecularCard>
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-sm font-medium text-white">{skill.name}</span>
-                    <span className="fluid-small text-white/30">{skill.level}%</span>
-                  </div>
-                  <div className="h-1 overflow-hidden rounded-full bg-white/10">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      whileInView={{ width: `${skill.level}%` }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 1.2, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
-                    />
-                  </div>
-                </SpecularCard>
-              </motion.div>
+              <SkillCard key={skill.name} name={skill.name} level={skill.level} index={i} />
             ))}
           </motion.div>
         </AnimatePresence>

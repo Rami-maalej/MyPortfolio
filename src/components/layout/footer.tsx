@@ -26,19 +26,40 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/5 px-6 py-12">
+    <footer className="px-6 py-14" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row">
-        <p className="text-sm text-white/30">
-          &copy; {new Date().getFullYear()} Rami Maalej. Crafted with precision.
-        </p>
+        <div className="flex flex-col items-center gap-1 md:items-start">
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.85rem', letterSpacing: '0.2em', color: 'rgba(201,168,76,0.6)' }}>
+            RAMI MAALEJ
+          </span>
+          <span style={{ fontFamily: 'var(--font-cinzel)', fontSize: '0.55rem', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.2)' }}>
+            &copy; {new Date().getFullYear()} · Full-Stack Developer & AI Architect
+          </span>
+        </div>
         <div className="flex items-center gap-4">
           <a
             href="/Rami_Maalej_CV.pdf"
             download
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-medium text-white/70 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 transition-all duration-300"
+            style={{
+              fontFamily: 'var(--font-cinzel)',
+              fontSize: '0.58rem',
+              letterSpacing: '0.2em',
+              border: '1px solid rgba(201,168,76,0.2)',
+              color: 'rgba(201,168,76,0.7)',
+              background: 'rgba(201,168,76,0.04)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(201,168,76,0.5)'
+              e.currentTarget.style.color = 'rgba(201,168,76,1)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(201,168,76,0.2)'
+              e.currentTarget.style.color = 'rgba(201,168,76,0.7)'
+            }}
             data-cursor="link"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
@@ -51,7 +72,18 @@ export default function Footer() {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/40 transition-all duration-300 hover:border-white/30 hover:text-white hover:shadow-lg hover:shadow-white/5"
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
+              style={{ border: '1px solid rgba(201,168,76,0.15)', color: 'rgba(255,255,255,0.35)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(201,168,76,0.4)'
+                e.currentTarget.style.color = 'rgba(201,168,76,0.9)'
+                e.currentTarget.style.boxShadow = '0 0 16px rgba(201,168,76,0.15)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(201,168,76,0.15)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.35)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
               data-cursor="link"
             >
               {iconMap[link.icon]}

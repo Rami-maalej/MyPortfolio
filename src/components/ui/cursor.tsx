@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function Cursor() {
   const dotRef = useRef<HTMLDivElement>(null)
@@ -9,8 +9,10 @@ export default function Cursor() {
   const rafId = useRef<number>(0)
   const isHovering = useRef(false)
   const dotScale = useRef(1)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const animate = () => {
       const lerp = (a: number, b: number) => a + (b - a) * 0.15
       dotPos.current.x = lerp(dotPos.current.x, mousePos.current.x)
@@ -52,6 +54,8 @@ export default function Cursor() {
       document.body.style.cursor = ''
     }
   }, [])
+
+  if (!mounted) return null
 
   return (
     <div

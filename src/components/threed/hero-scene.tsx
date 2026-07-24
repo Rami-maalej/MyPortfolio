@@ -3,86 +3,102 @@
 import { useRef, useMemo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { rand } from '@/lib/utils'
+import { seededRandom } from '@/lib/utils'
 
-function organicNoise(x: number, y: number, z: number): number {
-  let val = 0
-  val += Math.sin(x * 1.2 + y * 0.8 + z * 1.5) * 0.5
-  val += Math.sin(x * 2.5 + y * 2.1 + z * 1.8) * 0.25
-  val += Math.sin(x * 4.1 + y * 3.7 + z * 3.3) * 0.125
-  val += Math.sin(x * 6.3 + y * 5.9 + z * 5.7) * 0.0625
-  return val / (0.5 + 0.25 + 0.125 + 0.0625)
-}
-
-function generateParticles(count: number) {
-  const pos = new Float32Array(count * 3)
-  const base = new Float32Array(count * 3)
-  const cols = new Float32Array(count * 3)
-
-  for (let i = 0; i < count; i++) {
-    const theta = rand(0, Math.PI * 2)
-    const phi = Math.acos(rand(-1, 1))
-    const baseR = rand(1.8, 2.4)
-
-    const nx = Math.sin(phi) * Math.cos(theta)
-    const ny = Math.sin(phi) * Math.sin(theta)
-    const nz = Math.cos(phi)
-
-    const noise = organicNoise(nx * 2, ny * 2, nz * 2) * 1.0
-    const r = baseR + noise * 0.6
-
-    const x = r * nx
-    const y = r * ny * 0.85
-    const z = r * nz
-
-    pos[i * 3] = x
-    pos[i * 3 + 1] = y
-    pos[i * 3 + 2] = z
-    base[i * 3] = x
-    base[i * 3 + 1] = y
-    base[i * 3 + 2] = z
-
-    const depthNorm = (z + 3) / 6
-    const brightness = 0.3 + depthNorm * 0.7
-    cols[i * 3] = brightness
-    cols[i * 3 + 1] = brightness
-    cols[i * 3 + 2] = brightness
-  }
-
-  return { positions: pos, basePositions: base, colors: cols }
-}
-
-function ParticleDispersion() {
+/* ──────────────────────────────────────────────────────────────
+   INTERACTIVE PARTICLE FIELD — 12,000 monochrome particles
+   arranged on a flat plane in the XY of the camera. The
+   particles are the hero: they form flowing wave patterns,
+   respond to the mouse (repulsion + swirl), and pulse with
+   sound-like rhythms. No planets, no rings — just a
+   responsive, living, monochrome field.
+   ────────────────────────────────────────────────────────────── */
+function InteractiveField() {
   const mesh = useRef<THREE.Points>(null!)
   const { pointer, viewport, size } = useThree()
-
   const isMobile = size.width < 768
-  const count = isMobile ? 5000 : 12000
-  const { positions, basePositions, colors } = useMemo(() => generateParticles(count), [count])
+
+  // Smaller, faster on mobile; still plenty dense on desktop.
+  const count = isMobile ? 6500 : 14000
+
+  const { positions, basePositions, colors, sizes } = useMemo(() => {
+    const r = seededRandom(42)
+    const pos = new Float32Array(count * 3)
+    const bas = new Float32Array(count * 3)
+    const col = new Float32Array(count * 3)
+    const siz = new Float32Array(count)
+
+    // Distribute particles on a slightly thick disc that fills the
+    // camera frustum. Aspect-aware so the field is always full.
+    const w = 16 // world width
+    const h = 9  // world height
+    for (let i = 0; i < count; i++) {
+      // 85% in a "main field", 15% scattered far for depth
+      const far = r() < 0.15
+      const x = (r() - 0.5) * w * (far ? 1.6 : 1)
+      const y = (r() - 0.5) * h * (far ? 1.6 : 1)
+      const z = far ? -4 - r() * 6 : (r() - 0.5) * 1.5
+
+      pos[i * 3]     = x
+      pos[i * 3 + 1] = y
+      pos[i * 3 + 2] = z
+      bas[i * 3]     = x
+      bas[i * 3 + 1] = y
+      bas[i * 3 + 2] = z
+
+      // Brightness: most particles dim, some bright sparkles
+      let b = 0.4 + r() * 0.4
+      if (r() < 0.04) b = 1.0 + r() * 0.4
+      if (far) b *= 0.5
+      col[i * 3]     = b
+      col[i * 3 + 1] = b
+      col[i * 3 + 2] = b
+
+      siz[i] = r() < 0.04 ? 0.05 + r() * 0.04 : 0.018 + r() * 0.022
+    }
+    return { positions: pos, basePositions: bas, colors: col, sizes: siz }
+  }, [count])
+
+  // velocity buffer + reused vectors (zero per-frame allocs)
   const velocities = useRef(new Float32Array(count * 3))
-  const targetRotation = useRef({ x: 0, y: 0 })
-  const currentRotation = useRef({ x: 0, y: 0 })
-  const mouse3D = useRef(new THREE.Vector3())
+  const mouse3D = useRef(new THREE.Vector3(9999, 9999, 0))
+  const mouseTarget = useRef(new THREE.Vector3(9999, 9999, 0))
+  const mouseActive = useRef(0)
 
   useFrame((state) => {
     if (!mesh.current) return
-
     const posAttr = mesh.current.geometry.getAttribute('position')
     if (!posAttr) return
     const pos = posAttr.array as Float32Array
     const vel = velocities.current
+    const t = state.clock.elapsedTime
 
-    const time = state.clock.elapsedTime
-
-    let mouseWorld: THREE.Vector3 | null = null
+    // ── Update mouse target in world space (smooth) ──
     if (!isMobile) {
-      const ndc = new THREE.Vector3(pointer.x, pointer.y, 0.5)
+      const ndc = new THREE.Vector3(pointer.x, pointer.y, 0.4)
       ndc.unproject(state.camera)
       const dir = ndc.sub(state.camera.position).normalize()
       const dist = -state.camera.position.z / dir.z
-      mouseWorld = state.camera.position.clone().add(dir.multiplyScalar(dist))
-      mouse3D.current.copy(mouseWorld)
+      mouseTarget.current
+        .copy(state.camera.position)
+        .add(dir.multiplyScalar(dist))
+      mouseActive.current = Math.min(1, mouseActive.current + 0.06)
+    } else {
+      // Mobile: drive a slow figure-8 so the field stays alive
+      const mx = Math.sin(t * 0.4) * 3.5
+      const my = Math.sin(t * 0.8) * 2.0
+      mouseTarget.current.set(mx, my, 0)
+      mouseActive.current = 1
     }
+    mouse3D.current.lerp(mouseTarget.current, 0.12)
+
+    // ── Per-particle update ──
+    const mx = mouse3D.current.x
+    const my = mouse3D.current.y
+    const mz = mouse3D.current.z
+    const mouseInfluence = 2.2 * mouseActive.current
+    const mouseRadius = 2.2
+    const mouseRadiusSq = mouseRadius * mouseRadius
 
     for (let i = 0; i < count; i++) {
       const i3 = i * 3
@@ -90,70 +106,190 @@ function ParticleDispersion() {
       const by = basePositions[i3 + 1]
       const bz = basePositions[i3 + 2]
 
-      const breathe = Math.sin(time * 0.4 + i * 0.002) * 0.03
+      // Flow field: two perpendicular sine waves that drift in time.
+      // This makes the whole field "breathe" and sweep left-to-right
+      // even when the mouse is idle.
+      const wave =
+        Math.sin(bx * 0.45 + t * 0.7) * 0.45 +
+        Math.cos(by * 0.6 - t * 0.55) * 0.35 +
+        Math.sin((bx + by) * 0.3 + t * 0.4) * 0.25
 
-      vel[i3] += (bx - pos[i3]) * 0.06
-      vel[i3 + 1] += (by - pos[i3 + 1]) * 0.06
-      vel[i3 + 2] += (bz - pos[i3 + 2]) * 0.06
+      // Spring back to base, biased by the flow field
+      vel[i3]     += (bx + wave - pos[i3])     * 0.045
+      vel[i3 + 1] += (by + wave * 0.5 - pos[i3 + 1]) * 0.045
+      vel[i3 + 2] += (bz - pos[i3 + 2]) * 0.04
 
-      if (!isMobile && mouseWorld) {
-        const dx = pos[i3] - mouseWorld.x
-        const dy = pos[i3 + 1] - mouseWorld.y
-        const dz = pos[i3 + 2] - mouseWorld.z
-        const distSq = dx * dx + dy * dy + dz * dz
-        const maxDist = 150 / viewport.width
+      // Mouse repulsion (3D distance)
+      const dx = pos[i3]     - mx
+      const dy = pos[i3 + 1] - my
+      const dz = pos[i3 + 2] - mz
+      const distSq = dx * dx + dy * dy + dz * dz
 
-        if (distSq < maxDist * maxDist && distSq > 0.001) {
-          const distVal = Math.sqrt(distSq)
-          const strength = ((maxDist - distVal) / maxDist) * 2.5
-          const norm = strength / distVal
-          vel[i3] += dx * norm * 0.4
-          vel[i3 + 1] += dy * norm * 0.4
-          vel[i3 + 2] += dz * norm * 0.4
-        }
+      if (distSq < mouseRadiusSq && distSq > 0.0001) {
+        const distVal = Math.sqrt(distSq)
+        const falloff = (1 - distVal / mouseRadius) // 0..1
+        const strength = falloff * falloff * mouseInfluence
+        // Push outward
+        vel[i3]     += (dx / distVal) * strength
+        vel[i3 + 1] += (dy / distVal) * strength
+        vel[i3 + 2] += (dz / distVal) * strength * 0.5
       }
 
-      vel[i3] *= 0.9
-      vel[i3 + 1] *= 0.9
-      vel[i3 + 2] *= 0.9
+      // Damping — keeps things stable
+      vel[i3]     *= 0.86
+      vel[i3 + 1] *= 0.86
+      vel[i3 + 2] *= 0.86
 
-      pos[i3] += vel[i3]
-      pos[i3 + 1] += vel[i3 + 1] + breathe
+      pos[i3]     += vel[i3]
+      pos[i3 + 1] += vel[i3 + 1]
       pos[i3 + 2] += vel[i3 + 2]
     }
 
     posAttr.needsUpdate = true
 
-    if (!isMobile) {
-      targetRotation.current.y = pointer.x * 0.18
-      targetRotation.current.x = pointer.y * 0.12
-    } else {
-      targetRotation.current.y = time * 0.04
-      targetRotation.current.x = 0
+    // Subtle group-level sway (NOT pointer-driven)
+    if (mesh.current) {
+      mesh.current.rotation.z = Math.sin(t * 0.1) * 0.02
     }
-    currentRotation.current.x += (targetRotation.current.x - currentRotation.current.x) * 0.03
-    currentRotation.current.y += (targetRotation.current.y - currentRotation.current.y) * 0.03
-
-    mesh.current.rotation.x = currentRotation.current.x
-    mesh.current.rotation.y = currentRotation.current.y
   })
 
   return (
     <points ref={mesh} frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute args={[positions, 3]} attach="attributes-position" count={count} itemSize={3} />
-        <bufferAttribute args={[colors, 3]} attach="attributes-color" count={count} itemSize={3} />
+        <bufferAttribute
+          args={[positions, 3]}
+          attach="attributes-position"
+          count={count}
+          itemSize={3}
+        />
+        <bufferAttribute
+          args={[colors, 3]}
+          attach="attributes-color"
+          count={count}
+          itemSize={3}
+        />
+        <bufferAttribute
+          args={[sizes, 1]}
+          attach="attributes-size"
+          count={count}
+          itemSize={1}
+        />
       </bufferGeometry>
       <pointsMaterial
-        size={isMobile ? 0.1 : 0.075}
+        size={isMobile ? 0.035 : 0.028}
         sizeAttenuation
         vertexColors
         transparent
+        opacity={0.9}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        opacity={isMobile ? 0.7 : 0.85}
       />
     </points>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   AMBIENT GRID — a single thin wireframe plane far in the
+   back. Adds structure, gives the void a horizon line. Static.
+   ────────────────────────────────────────────────────────────── */
+function HorizonGrid() {
+  const ref = useRef<THREE.LineSegments>(null!)
+  const geom = useMemo(() => {
+    const g = new THREE.WireframeGeometry(new THREE.PlaneGeometry(40, 40, 40, 40))
+    return g
+  }, [])
+  useFrame((state) => {
+    if (ref.current) {
+      ref.current.rotation.z = state.clock.elapsedTime * 0.01
+    }
+  })
+  return (
+    <lineSegments ref={ref} position={[0, 0, -8]} geometry={geom}>
+      <lineBasicMaterial
+        color="#ffffff"
+        transparent
+        opacity={0.06}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </lineSegments>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   CURSOR HALO — a soft white ring that follows the mouse in
+   screen space, drawn in 3D at z=0. Pure visual feedback for
+   the interaction. Hidden on mobile.
+   ────────────────────────────────────────────────────────────── */
+function CursorHalo() {
+  const ring = useRef<THREE.Mesh>(null!)
+  const inner = useRef<THREE.Mesh>(null!)
+  const { pointer, size, camera } = useThree()
+  const isMobile = size.width < 768
+
+  const tmp = useMemo(() => new THREE.Vector3(), [])
+
+  useFrame((state) => {
+    if (isMobile) {
+      if (ring.current) ring.current.visible = false
+      if (inner.current) inner.current.visible = false
+      return
+    }
+    // Convert NDC pointer to a point on z=0 plane
+    tmp.set(pointer.x, pointer.y, 0.5)
+    tmp.unproject(camera)
+    const dir = tmp.sub(camera.position).normalize()
+    const dist = -camera.position.z / dir.z
+    const wx = camera.position.x + dir.x * dist
+    const wy = camera.position.y + dir.y * dist
+
+    if (ring.current) {
+      ring.current.position.set(wx, wy, 0)
+      ring.current.visible = true
+      ring.current.scale.setScalar(0.9 + Math.sin(state.clock.elapsedTime * 2) * 0.05)
+    }
+    if (inner.current) {
+      inner.current.position.set(wx, wy, 0)
+      inner.current.visible = true
+    }
+  })
+
+  return (
+    <>
+      <mesh ref={ring}>
+        <ringGeometry args={[0.18, 0.22, 64]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <mesh ref={inner}>
+        <circleGeometry args={[0.06, 32]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.9}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </>
+  )
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SCENE
+   ────────────────────────────────────────────────────────────── */
+function Scene() {
+  return (
+    <>
+      <HorizonGrid />
+      <InteractiveField />
+      <CursorHalo />
+    </>
   )
 }
 
@@ -161,13 +297,18 @@ export default function HeroScene() {
   return (
     <div className="pointer-events-none absolute inset-0">
       <Canvas
-        camera={{ position: [0, 0, 5], fov: 65 }}
-        gl={{ alpha: false, antialias: true, powerPreference: 'high-performance' }}
+        camera={{ position: [0, 0, 6], fov: 60 }}
+        gl={{
+          alpha: true,
+          antialias: true,
+          powerPreference: 'high-performance',
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.0,
+        }}
         dpr={[1, 1.5]}
         style={{ background: '#000000' }}
       >
-        <color args={['#000000']} attach="background" />
-        <ParticleDispersion />
+        <Scene />
       </Canvas>
     </div>
   )

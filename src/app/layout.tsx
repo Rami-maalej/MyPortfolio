@@ -1,25 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Cormorant_Garamond, Cinzel, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/layout/nav";
 import Footer from "@/components/layout/footer";
-import Cursor from "@/components/ui/cursor";
-import SmoothScroll from "@/components/layout/smooth-scroll";
-import IntroSequence from "@/components/layout/intro-sequence";
+import { ClientOverlays } from "@/components/layout/client-overlays";
 
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Old-money luxury serif — high contrast, editorial
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
+// All-caps incised roman — coinage, heraldry, old money labels
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
   subsets: ["latin"],
   display: "swap",
 });
@@ -41,8 +45,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Rami Maalej" }],
   openGraph: {
     title: "Rami Maalej | Full-Stack Developer & AI Architect",
-    description:
-      "Building scalable systems and cinematic digital experiences with React, Node.js, and AI.",
+    description: "Building scalable systems and cinematic digital experiences with React, Node.js, and AI.",
     siteName: "Rami Maalej Portfolio",
     locale: "en_US",
     type: "website",
@@ -50,8 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Rami Maalej | Full-Stack Developer & AI Architect",
-    description:
-      "Building scalable systems and cinematic digital experiences with React, Node.js, and AI.",
+    description: "Building scalable systems and cinematic digital experiences with React, Node.js, and AI.",
   },
   robots: {
     index: true,
@@ -65,15 +67,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${cinzel.variable} ${geistMono.variable}`}>
       <body className="bg-black text-white antialiased">
-          <IntroSequence />
-          <Cursor />
-          <SmoothScroll>
-            <Nav />
-            <main className="overflow-x-hidden">{children}</main>
-            <Footer />
-          </SmoothScroll>
+        <ClientOverlays>
+          <Nav />
+          <main className="overflow-x-hidden">{children}</main>
+          <Footer />
+        </ClientOverlays>
       </body>
     </html>
   );

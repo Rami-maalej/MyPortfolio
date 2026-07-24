@@ -17,66 +17,84 @@ export default function Experience() {
     <section id="experience" ref={sectionRef} className="relative px-6 py-32">
       <div className="mx-auto max-w-5xl">
         <Reveal>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-white/60 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+          <div className="label-cinzel mb-5 inline-flex items-center gap-3 text-white/30">
+            <span className="gold-dot" />
             Experience
           </div>
-          <h2 className="fluid-heading mb-4 font-display text-white">
+          <h2 className="fluid-heading mb-6 text-white">
             Professional<br />
-            <span className="text-white/30 italic">Journey</span>
+            <span className="italic" style={{ color: 'transparent', WebkitTextStroke: '1px rgba(255,255,255,0.2)' }}>
+              Journey
+            </span>
           </h2>
-          <p className="fluid-body max-w-2xl text-white/40">
+          <p className="fluid-body max-w-xl text-white/35">
             Real-world experience building production-grade systems.
           </p>
         </Reveal>
 
-        <div className="relative mt-16">
+        <div className="relative mt-20">
+          {/* Animated timeline line — gold gradient */}
           <svg className="absolute left-8 top-0 h-full w-px max-md:left-4" viewBox="0 0 1 500" preserveAspectRatio="none">
             <motion.line
               x1="0" y1="0" x2="0" y2="500"
-              stroke="rgba(255,255,255,0.08)"
+              stroke="rgba(201,168,76,0.12)"
               strokeWidth="1"
               style={{ pathLength }}
             />
             <motion.line
               x1="0" y1="0" x2="0" y2="500"
-              stroke="url(#timelineGrad)"
+              stroke="url(#timelineGradGold)"
               strokeWidth="1.5"
               style={{ pathLength }}
             />
             <defs>
-              <linearGradient id="timelineGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="100%" stopColor="#a855f7" />
+              <linearGradient id="timelineGradGold" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#c9a84c" />
+                <stop offset="100%" stopColor="#e8d5a3" stopOpacity="0.4" />
               </linearGradient>
             </defs>
           </svg>
 
-          <div className="space-y-12 overflow-hidden">
+          <div className="space-y-14 overflow-hidden">
             {experiences.map((exp, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
+                initial={{ opacity: 0, x: -30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: '-15% 0px' }}
-                transition={{ duration: 0.8, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className={`relative pl-20 max-md:pl-14 ${i % 2 === 1 ? 'lg:ml-24' : ''}`}
+                transition={{ duration: 0.9, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
+                className={`relative pl-20 max-md:pl-14 ${i % 2 === 1 ? 'lg:ml-20' : ''}`}
               >
-                <div className="absolute left-[27px] top-1 h-4 w-4 rounded-full border-2 border-blue-400 bg-black shadow-[0_0_12px_rgba(99,102,241,0.3)] max-md:left-[11px]" />
+                {/* Gold timeline dot */}
+                <div
+                  className="absolute left-[27px] top-2 h-4 w-4 rounded-full border-2 max-md:left-[11px]"
+                  style={{
+                    borderColor: '#c9a84c',
+                    background: '#000',
+                    boxShadow: '0 0 12px rgba(201,168,76,0.4), 0 0 24px rgba(201,168,76,0.15)',
+                  }}
+                />
 
-                <div className="glass-hover rounded-2xl p-6">
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <motion.div
+                  whileHover={{ y: -4, rotateX: 2 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                  className="glass-hover rounded-2xl p-7"
+                  style={{ transformStyle: 'preserve-3d' }}
+                >
+                  <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-white">{exp.role}</h3>
-                      <p className="text-sm text-white/50">
+                      <h3 style={{ fontFamily: 'var(--font-cormorant)', fontSize: 'clamp(1.3rem, 1.5vw, 1.7rem)', color: 'white', fontWeight: 500 }}>
+                        {exp.role}
+                      </h3>
+                      <p style={{ fontFamily: 'var(--font-cormorant)', fontSize: '1.1rem', color: 'rgba(255,255,255,0.45)' }}>
                         {exp.company} &middot; {exp.location}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/60">
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="rounded-full px-3 py-1 label-cinzel" style={{ background: 'rgba(201,168,76,0.08)', color: 'rgba(201,168,76,0.7)', border: '1px solid rgba(201,168,76,0.15)' }}>
                         {exp.type}
                       </span>
-                      <span className="text-xs text-white/30">{exp.period}</span>
+                      <span className="label-cinzel text-white/25">{exp.period}</span>
                     </div>
                   </div>
 
@@ -84,18 +102,19 @@ export default function Experience() {
                     {exp.achievements.map((ach, j) => (
                       <motion.li
                         key={j}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0, x: -16 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.3 + j * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex gap-3 text-sm text-white/60"
+                        className="flex gap-3"
+                        style={{ fontFamily: 'var(--font-cormorant)', fontSize: '1.05rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}
                       >
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                        <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full flex-shrink-0" style={{ background: 'rgba(201,168,76,0.7)' }} />
                         {ach}
                       </motion.li>
                     ))}
                   </ul>
-                </div>
+                </motion.div>
               </motion.div>
             ))}
           </div>
