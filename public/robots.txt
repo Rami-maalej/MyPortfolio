@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rami-maalej.ct.ws/sitemap.xml
